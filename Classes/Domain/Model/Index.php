@@ -153,22 +153,27 @@ class Index
      * @param array $arguments
      * @param string $content
      * @param boolean $prefixIndex
+     * @param string $header
      * @return Response
      * @throws ElasticSearchException
      */
-    public function request($method, $path = null, array $arguments = [], $content = null, $prefixIndex = true)
+    public function request($method, $path = null, array $arguments = [], $content = null, $prefixIndex = true, $header = null)
     {
         if ($this->client === null) {
             throw new Exception('The client of the index "' . $this->name . '" is not set, hence no requests can be done.');
         }
         $path = ($path ? trim($path) : '');
         if ($prefixIndex === true) {
-            $path = '/' . $this->name . $path;
+            $prefix = '';
+            if (isset($this->settings['indexPrefix'])) {
+                $prefix = $this->settings['indexPrefix'];
+            }
+            $path = '/' . $prefix . $this->name . $path;
         } else {
             $path = '/' . $path;
         }
 
-        return $this->client->request($method, $path, $arguments, $content);
+        return $this->client->request($method, $path, $arguments, $content, $header);
     }
 
     /**

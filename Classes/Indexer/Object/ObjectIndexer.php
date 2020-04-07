@@ -16,10 +16,12 @@ use Flowpack\ElasticSearch\Domain\Model\Client;
 use Flowpack\ElasticSearch\Domain\Model\Document;
 use Flowpack\ElasticSearch\Domain\Model\GenericType;
 use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Http\Client\CurlEngineException;
 use Neos\Flow\Persistence\PersistenceManagerInterface;
 use Neos\Flow\Reflection\ReflectionService;
 use Neos\Utility\ObjectAccess;
 use Neos\Utility\TypeHandling;
+use SporerWebservices\PassbookPasses\Service\JobQueueService;
 
 /**
  * This serves functionality for indexing objects
@@ -68,6 +70,12 @@ class ObjectIndexer
     protected $client;
 
     /**
+     * @var JobQueueService
+     * @Flow\Inject
+     */
+    protected $jobQueueService;
+
+    /**
      * (Re-) indexes an object to the ElasticSearch index, no matter if the change is actually required.
      *
      * @param object $object
@@ -85,7 +93,17 @@ class ObjectIndexer
 
         $id = $this->persistenceManager->getIdentifierByObject($object);
         $document = new Document($type, $data, $id);
-        $document->store();
+        try {
+            $document->store();
+        } catch (CurlEngineException $e) {
+            $this->jobQueueService->queueMethodCall('bulkprocessing', ObjectIndexer::class,
+                'indexObject',
+                array(
+                    'object' => $object,
+                    'signalInformation' => $signalInformation,
+                    'client' => $client
+                ), array('delay' => 300));
+        }
     }
 
     /**
@@ -149,7 +167,17 @@ class ObjectIndexer
             return;
         }
         $id = $this->persistenceManager->getIdentifierByObject($object);
-        $type->deleteDocumentById($id);
+        try {
+            $type->deleteDocumentById($id);
+        } catch (CurlEngineException $e) {
+            $this->jobQueueService->queueMethodCall('bulkprocessing', ObjectIndexer::class,
+                'removeObject',
+                array(
+                    'object' => $object,
+                    'signalInformation' => $signalInformation,
+                    'client' => $client
+                ), array('delay' => 300));
+        }
     }
 
     /**

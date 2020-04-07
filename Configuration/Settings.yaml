@@ -12,14 +12,3 @@ Flowpack:
       client: default
     transfer:
       connectionTimeout: 60
-Neos:
-  Flow:
-    persistence:
-      doctrine:
-        eventListeners:
-          Flowpack\ElasticSearch\Indexer\Object\Signal\Doctrine\EmitterAdapter:
-            events:
-              - postUpdate
-              - postPersist
-              - postRemove
-            listener: Flowpack\ElasticSearch\Indexer\Object\Signal\Doctrine\EmitterAdapter
